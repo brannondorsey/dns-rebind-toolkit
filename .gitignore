@@ -1,0 +1,8 @@
+node_modules
+exploits/*/node_modules
+exploits/*/data/*
+!exploits/*/data/.gitkeep
+data/*
+!data/.gitkeep
+notes
+.vscode

