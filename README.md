@@ -6,9 +6,9 @@ DNS Rebind Toolkit is a frontend JavaScript framework for developing [DNS Rebind
 
 The attack requires a victim on the target network to simply follow a link, or be shown an HTML ad  containing a malicious iframe. From their, the victim's web browser is used like a proxy to directly access other hosts connected to their home network. These target machines and services would otherwise be unavailable to the attacker from the Internet. The remote attacker may not know what those services are, or what IP addresses they occupy on the victim's network, but DNS Rebind Toolkit handles this by brute forcing hundreds of likely IP addresses.
 
-Under the hood, this tool makes use of a public [whonow DNS server](https://github.com/brannondorsey/whonow) running on rebind.network:53 to execute the DNS rebind attack and fool the victim's web browser into violating the [Same-origin policy](https://en.wikipedia.org/wiki/Same-origin_policy). From their, it uses [WebRTC](https://en.wikipedia.org/wiki/WebRTC) to leak the victim's private IP address, say 192.168.1.36. It uses the first three octets of this local IP address to guess the network's subnet and then inject 256 iframes, from 192.168.1.0-255 delivering a payload to each host that could possibly be on the network subnet. 
+Under the hood, this tool makes use of a public [whonow DNS server](https://github.com/brannondorsey/whonow) running on rebind.network:53 to execute the DNS rebinding attack and fool the victim's web browser into violating the [Same-origin policy](https://en.wikipedia.org/wiki/Same-origin_policy). From their, it uses [WebRTC](https://en.wikipedia.org/wiki/WebRTC) to leak the victim's private IP address, say 192.168.1.36. It uses the first three octets of this local IP address to guess the network's subnet and then inject 256 iframes, from 192.168.1.0-255 delivering a payload to each host that could possibly be on the network subnet. 
 
-This toolkit can be used to develop and deploy your own DNS Rebind attacks. Several real-world attack payloads are included with this toolkit in the [`payloads/`](payloads) directory. These payloads include  information exfiltration (and rickroll tomfoolery) attacks against a few popular IoT devices, including Google Home and Roku products.
+This toolkit can be used to develop and deploy your own DNS rebinding attacks. Several real-world attack payloads are included with this toolkit in the [`payloads/`](payloads) directory. These payloads include  information exfiltration (and rickroll tomfoolery) attacks against a few popular IoT devices, including Google Home and Roku products.
 
 ## Getting Started
 
@@ -29,17 +29,17 @@ By default, `server.js` serves payloads targeting Google Home, Roku, and Radio T
 
 ## API and Usage
 
-This toolkit provides two JavaScript objects that can be used together to create DNS Rebind attacks:
+This toolkit provides two JavaScript objects that can be used together to create DNS rebinding attacks:
 
 - [`DNSRebindAttack`](share/js/DNSRebindAttack.js): This object is used to launch an attack against a vulnerable service running on a known port. It spawns one payload for each IP address you choose to target. `DNSRebindAttack` objects are used to create, manage, and communicate with multiple `DNSRebindNode` objects. The payloads launched by `DNSRebindAttack` must contain `DNSRebindNode` objects.
-- [`DNSRebindNode`](share/js/DNSRebindNode.js): This static class object should be included in each HTML payload file. It is used to target one service running on one host. It can communicate with the `DNSRebindAttack` object that spawned it and it has helper functions to execute the DNS Rebind attack (using `DNSRebindNode.rebind(...)`) as well as exfiltrate data discovered during the attack to `server.js` (`DNSRebindNode.exfiltrate(...)`).
+- [`DNSRebindNode`](share/js/DNSRebindNode.js): This static class object should be included in each HTML payload file. It is used to target one service running on one host. It can communicate with the `DNSRebindAttack` object that spawned it and it has helper functions to execute the DNS rebinding attack (using `DNSRebindNode.rebind(...)`) as well as exfiltrate data discovered during the attack to `server.js` (`DNSRebindNode.exfiltrate(...)`).
 
 These two scripts are used together to execute an attack against unknown hosts on a firewall protected LAN. A basic attack looks like this:
 
 1. Attacker sends victim a link to a malicious HTML page that launches the attack: e.g. `http://example.com/launcher.html`. `launcher.html` contains an instance of `DNSRebindAttack`.
 2. The victim follows the attacker's link, or visits a page where `http://example.com/launcher.html` is embedded as an iframe. This causes the `DNSRebindAttack` on `launcher.html` to begin the attack.
 3. `DNSRebindAttack` uses a [WebRTC leak](https://github.com/diafygi/webrtc-ips) to discover the local IP address of the victim machine (e.g. `192.168.10.84`). The attacker uses this information to choose a range of IP addresses to target on the victim's LAN (e.g. `192.168.10.0-255`).
-4. `launcher.html` launches the DNS Rebind attack (using `DNSRebindAttack.attack(...)`) against a range of IP addresses on the victim's subnet, targeting a single service (e.g. the undocumented Google Home REST API available on port `8008`). COME BACK
+4. `launcher.html` launches the DNS rebinding attack (using `DNSRebindAttack.attack(...)`) against a range of IP addresses on the victim's subnet, targeting a single service (e.g. the undocumented Google Home REST API available on port `8008`). COME BACK
 5. At an interval defined by the user (200 milliseconds by default), `DNSRebindAttack` embeds one iframe containing `payload.html` into the `launcher.html` page. Each iframe contains one `DNSRebindNode` object that executes a self-contained attack against port 8008 of a single host defined in the range of IP addresses being attacked. This injection process continues until an iframe has been injected for each IP address that is being targeted by the attack.
 6. Each injected `payload.html` file uses `DNSRebindNode` to attempt a rebind attack by communicating with a [whonow DNS server](https://github.com/brannondorsey/whonow). If it succeeds, same-origin policy is violated and `payload.html` can communicate with the Google Home product directly. Usually `payload.html` will be written in such a way that it makes a few API calls to the target device and exfiltrates the results to `server.js` running on `example.com` before finishing the attack and destroying itself. 
 
@@ -51,7 +51,7 @@ An attack consists of 3 coordinated scripts and files:
 
 - An HTML file containing an instance of `DNSRebindAttack` (e.g. `launcher.html`)
 - An HTML file containing the attack payload (e.g. `payload.html`). This file is embedded into `launcher.html` by `DNSRebindAttack` for each IP address being targetted.
-- A DNS Rebind Toolkit server (`server.js`) to deliver the the above files and exfiltrate data if need be.
+- A DNS Rebinding Toolkit server (`server.js`) to deliver the the above files and exfiltrate data if need be.
 
 ### `launcher.html`
 
