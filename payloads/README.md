@@ -113,7 +113,7 @@ See [brannondorsey/radio-thermostat](https://github.com/brannondorsey/radio-ther
 
 ## Phillips Hue Bridge
 
-Up until 2016 the Phillip's Hue Bridge wireless light bulb controller could easily be controlled by an unauthenticated attacker. They've since updated their firmware to protect against this. While you can no longer control the device via a DNS rebinding attack you can still identify that a hue bridge is on the network and exfiltrate basic information about the device.
+Up until 2016 the Phillip's Hue Bridge wireless light bulb controller could easily be controlled by an unauthenticated attacker. They've since updated their firmware to protect against this. While you can no longer control the device via a DNS rebinding attack you can still identify that a hue bridge is on the network and exfiltrate basic information about the device. The data that can be accessed is relatively harmless.
 
 ```bash
 # assuming a phillips hue bridge device is present at 192.168.1.8
