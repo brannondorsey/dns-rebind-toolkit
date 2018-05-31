@@ -6,3 +6,4 @@ data/*
 !data/.gitkeep
 notes
 .vscode
+.DS_Store
