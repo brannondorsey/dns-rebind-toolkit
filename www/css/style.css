@@ -1,0 +1,42 @@
+body {
+    font-family: Work Sans;
+    line-height: 1.5;
+}
+.emoji {
+    font-family: apple color emoji,segoe ui emoji,notocoloremoji,segoe ui symbol,android emoji,emojisymbols,emojione mozilla;
+    font-size: 500%;
+    text-align: center;
+}
+
+#app {
+    width: 800px;
+    margin: 50px auto;
+}
+
+.header {
+    text-align: center;
+    margin-bottom: 50px;
+}
+
+.device {
+    width: 300px;
+    margin: auto;
+}
+
+.warning {
+    color: red;
+}
+
+#loading {
+    width: 100px;
+    display: block;
+    margin: auto;
+}
+
+.info {
+    margin-bottom: 20px;
+}
+
+a, a:visited {
+    color: black;
+}
