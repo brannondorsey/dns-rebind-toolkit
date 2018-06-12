@@ -9,8 +9,14 @@ body {
 }
 
 #app {
-    width: 800px;
+    width: 80%;
     margin: 50px auto;
+}
+
+#long-description {
+    width: 70%;
+    text-align: left;
+    margin: auto;
 }
 
 .header {
@@ -19,7 +25,7 @@ body {
 }
 
 .device {
-    width: 300px;
+    width: 60%;
     margin: auto;
 }
 
