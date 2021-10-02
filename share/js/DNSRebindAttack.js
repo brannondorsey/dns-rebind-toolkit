@@ -101,18 +101,23 @@ class DNSRebindAttack extends EventEmitter {
 
             //wait for a while to let everything finish
             setTimeout(function(){
-                
-                //read candidate info from local description
-                var lines = pc.localDescription.sdp.split('\n')
-                lines.forEach(function(line){
-                    if(line.indexOf('a=candidate:') === 0) handleCandidate(line)
-                })
 
-                reject(Error('WebRTC could not determine the local IPv4 address'))
+                //read candidate info from local description
+                try {
+                    var lines = pc.localDescription.sdp.split('\n')
+                    lines.forEach(function(line){
+                        if(line.indexOf('a=candidate:') === 0) handleCandidate(line)
+                    })
+                } catch (err) {
+                    console.log('Ignoring error getting local IP address with WebRTC:')
+                    console.err(err)
+                } finally {
+                    reject(Error('WebRTC could not determine the local IPv4 address'))
+                }
             }, 1000)
 
             function handleCandidate(candidate){
-                
+
                 //match just the IP address
                 const ipRegex = /([0-9]{1,3}(\.[0-9]{1,3}){3}|[a-f0-9]{1,4}(:[a-f0-9]{1,4}){7})/
                 const ip = ipRegex.exec(candidate)[1]
